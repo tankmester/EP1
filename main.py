@@ -56,7 +56,7 @@ class PokemonScrapper(scrapy.Spider):
     #Ultimo metódo a ser utilizado
     def closed(self, reason):    
         df = pd.DataFrame(self.pokemon_data) #Criação/Definição do dataframe
-        df.set_index("Numero", inplace=True) #Definição do Index sem a coluna Numero
+        df.set_index("Numero", inplace=True) #Definição do Index sendo a coluna Numero
         df = df.sort_index() #Comando pandas para ordenar através do index definido        
         print(df,flush=True)
         df.to_csv("pokemon_data.csv")  # Salva os dados em um arquivo CSV
