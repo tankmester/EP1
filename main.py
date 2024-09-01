@@ -4,7 +4,7 @@ import pandas as pd
 
 class PokemonScrapper(scrapy.Spider):
     name = 'pokemon_scrapper'
-    domain = "https://pokemondb.net/"
+    domain = "https://pokemondb.net"
     start_urls = ["https://pokemondb.net/pokedex/all"]
     
     def __init__(self):
