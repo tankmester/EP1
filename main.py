@@ -1,60 +1,67 @@
-import numpy as np
-import pandas as pd
 import scrapy
-
+from scrapy.crawler import CrawlerProcess
+import pandas as pd
 
 class PokemonScrapper(scrapy.Spider):
-  name = 'pokemon_scrapper'
-  domain = "https://pokemondb.net/"
+    name = 'pokemon_scrapper'
+    domain = "https://pokemondb.net/"
+    start_urls = ["https://pokemondb.net/pokedex/all"]
+    
+    def __init__(self):
+        self.pokemon_data = []
 
-  start_urls = ["https://pokemondb.net/pokedex/all"]
+    def parse(self, response):
+        pokemons = response.css('#pokedex > tbody > tr')
+        for pokemon in pokemons[:-1]:  # Limitar a quantidade de dados para teste
+            link = pokemon.css("td.cell-name > a::attr(href)").extract_first()
+            yield response.follow(self.domain + link, self.parse_pokemon)
+            
+    #Extração das informações sobre os pokemon
+    def parse_pokemon(self, response):
+        nome = response.css('h1::text').get()
+        num = response.css('table.vitals-table > tbody > tr:nth-child(1) > td > strong::text').get()
+        peso = response.css('table.vitals-table > tbody > tr:nth-child(5) > td::text').get()
+        altura = response.css('table.vitals-table > tbody > tr:nth-child(4) > td::text').get()
+        tipo1 = response.css('table.vitals-table > tbody > tr:nth-child(2) > td > a:nth-child(1)::text').get()
+        tipo2 = response.css('table.vitals-table > tbody > tr:nth-child(2) > td > a:nth-child(2)::text').get()
+        habilidade = response.css('table.vitals-table > tbody > tr:nth-child(6) > td > span > a::attr(href)').get()
+        descricaohab = response.css('table.vitals-table > tbody > tr:nth-child(6) > td > span > a::attr(title)').get()
+        evonum2 = response.css('div.infocard-list-evo > div:nth-child(3) > span:nth-child(2) > small::text').get()
+        evoname2 = response.css('div.infocard-list-evo > div:nth-child(3) > span:nth-child(2) > a::text').get()
+        evourl2 = response.css('div.infocard-list-evo > div:nth-child(3) > span:nth-child(2) > a::attr(href)').get()
+        evonum3 = response.css('div.infocard-list-evo > div:nth-child(5) > span:nth-child(2) > small::text').get()
+        evoname3 = response.css('div.infocard-list-evo > div:nth-child(5) > span:nth-child(2) > a::text').get()
+        evourl3 = response.css('div.infocard-list-evo > div:nth-child(5) > span:nth-child(2) > a::attr(href)').get()        
+            
+        #Criado uma lista para coluna, e inserção dos dados valores dinâmicos, que são populado a partir do .get na parse_pokemon
+        self.pokemon_data.append({
+            "Numero": num,
+            "URL": response.url,
+            "Nome": nome,
+            "Peso": peso,
+            "Altura": altura,
+            "Tipo 1": tipo1,
+            "Tipo 2": tipo2,
+            "Habilidade": habilidade,
+            "Descricao Habilidade": descricaohab,
+            "URL Habilidade": 'https://pokemondb.net' + habilidade if habilidade else None,
+            "Evolução 2 Número": evonum2 if evonum2 else None,
+            "Evolução 2 Nome": evoname2 if evoname2 else None,
+            "Evolução 2 Url": 'https://pokemondb.net' + evourl2 if evourl2 else None,
+            "Evolução 3 Número": evonum3 if evonum3 else None,
+            "Evolução 3 Nome": evoname3 if evoname3 else None,
+            "Evolução 3 Url": 'https://pokemondb.net' + evourl3 if evourl3 else None,
+        })
 
-  def parse(self, response):
-    pokemons = response.css('#pokedex > tbody > tr')
-    #for pokemon in pokemons:
-    pokemon = pokemons[0]
-    link = pokemon.css("td.cell-name > a::attr(href)").extract_first()
-    yield response.follow(self.domain + link, self.parse_pokemon)
+    #Ultimo metódo a ser utilizado
+    def closed(self, reason):    
+        df = pd.DataFrame(self.pokemon_data) #Criação/Definição do dataframe
+        df.set_index("Numero", inplace=True) #Definição do Index sem a coluna Numero
+        df = df.sort_index() #Comando pandas para ordenar através do index definido        
+        print(df,flush=True)
+        df.to_csv("pokemon_data.csv")  # Salva os dados em um arquivo CSV
 
-  def parse_pokemon(self, response):
-    nome = response.css('h1::text')
-    num = response.css('table.vitals-table > tbody > tr:nth-child(1) > td > strong::text')
-    peso = response.css('table.vitals-table > tbody > tr:nth-child(5) > td::text')
-    altura = response.css('table.vitals-table > tbody > tr:nth-child(4) > td::text')
-    tipo1 = response.css('table.vitals-table > tbody > tr:nth-child(2) > td > a:nth-child(1)::text')
-    tipo2 = response.css('table.vitals-table > tbody > tr:nth-child(2) > td > a:nth-child(2)::text')
-    habilidade = response.css('table.vitals-table > tbody > tr:nth-child(6) > td > span > a::attr(href)')  
-    descricaohab = response.css('table.vitals-table > tbody > tr:nth-child(6) > td > span > a::attr(title)')  
 
-    evonum1 = response.css('div.infocard-list-evo > div:nth-child(1) > span:nth-child(2) > small::text')
-    evoname1 = response.css('div.infocard-list-evo > div:nth-child(1) > span:nth-child(2) > a::text')
-    evourl1 = response.css('div.infocard-list-evo > div:nth-child(1) > span:nth-child(2) > a::attr(href)')
-
-    evonum2 = response.css('div.infocard-list-evo > div:nth-child(3) > span:nth-child(2) > small::text')
-    evoname2 = response.css('div.infocard-list-evo > div:nth-child(3) > span:nth-child(2) > a::text')
-    evourl2 = response.css('div.infocard-list-evo > div:nth-child(3) > span:nth-child(2) > a::attr(href)')
-
-    evonum3 = response.css('div.infocard-list-evo > div:nth-child(5) > span:nth-child(2) > small::text')
-    evoname3 = response.css('div.infocard-list-evo > div:nth-child(5) > span:nth-child(2) > a::text')
-    evourl3 = response.css('div.infocard-list-evo > div:nth-child(5) > span:nth-child(2) > a::attr(href)')
-
-    yield{"URL": response.url, 
-          "Nome": nome.get(),
-          "Numero": num.get(), 
-          "Peso": peso.get(), 
-          "Altura": altura.get(), 
-          "tipo 1": tipo1.get(), 
-          "tipo 2": tipo2.get(), 
-          "Habidade": habilidade.get(), 
-          "Descricao Habilidade": descricaohab.get(),          
-          "URL Habilidade": 'https://pokemondb.net' + habilidade.get(),
-          "Numero Evolucao": evonum1.get(),
-          "Nome Evolucao": evoname1.get(),
-          "URL Evolucao": 'https://pokemondb.net' + evourl1.get(),
-          "Numero Evolucao 2": evonum2.get(),
-          "Nome Evolucao 2": evoname2.get(),
-          "URL Evolucao 2": 'https://pokemondb.net' + evourl2.get(),
-          "Numero Evolucao 3": evonum3.get(),
-          "Nome Evolucao 3": evoname3.get(),
-          "URL Evolucao 3": 'https://pokemondb.net' + evourl3.get(), 
-         }
+process = CrawlerProcess() #Acionando a classe CrawlerProcess
+process.crawl(PokemonScrapper) #Acionando a classe PokemonScrapper
+process.start() #Executou a classe
